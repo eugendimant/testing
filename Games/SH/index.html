@@ -28,7 +28,7 @@
     .grid{ display:grid; grid-template-columns: 2.3fr 1fr; gap: 14px; align-items:start; }
     .card{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow:hidden; }
     .card.pad{ padding: 12px 12px; }
-    #game{ width:100%; aspect-ratio: 16/9; background: #05050a; display:block; touch-action: none; }
+    #game{ width:100%; aspect-ratio: 16/9; background: #05050a; display:block; }
     .hud h2, .log h2{ margin:0 0 8px 0; font-size: 14px; letter-spacing: 0.04em; }
     .pill{ display:flex; align-items:center; justify-content:space-between; gap:10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.07); border-radius: 999px; padding: 7px 10px; font-size: 12px; margin: 7px 0; }
     .pill b{ font-size: 12px; }
@@ -76,18 +76,8 @@
     </div>
 
     <div class="grid">
-      <div class="card" style="position:relative">
+      <div class="card">
         <canvas id="game" width="960" height="540"></canvas>
-        <div class="mobile-controls">
-          <div class="mobile-pad" id="mobilePad">
-            <div class="mobile-stick" id="mobileStick"></div>
-          </div>
-          <div class="mobile-actions">
-            <button class="slap" id="btnSlap">SLAP</button>
-            <button class="interact" id="btnInteract">INTERACT</button>
-            <button class="pause" id="btnPause">PAUSE</button>
-          </div>
-        </div>
       </div>
 
       <div>
@@ -168,10 +158,6 @@
   const keys = new Set();
   const effects = [];
   const particles = [];
-  let slapTimer = 0;
-  let slapCooldown = 0;
-  let lastInteractionHint = 0;
-  const touchState = { active: false, id: null, startX: 0, startY: 0, dx: 0, dy: 0 };
 
   const player = { x: W/2, y: H-120, vx:0, vy:0, w:26, h:30, dir:{x:1,y:0} };
   const npcs = [];
@@ -356,7 +342,7 @@
   }
 
   function useSlide(){
-    addLog("Serbianhero uses the Gayrutsche (neon slide) to cool off fast.");
+    addLog("Serbianhero uses the neon slide to cool off fast.");
     applyDelta({ heat: -18, rage: -8, suit: -4, energy: 6 });
     effects.push({ text: "COOL OFF", x: player.x, y: player.y-22, color: "#36d399", t: 0 });
     player.x = 120;
@@ -434,10 +420,6 @@
       return;
     }
 
-    slapTimer = Math.max(0, slapTimer - dt);
-    slapCooldown = Math.max(0, slapCooldown - dt);
-    lastInteractionHint = Math.max(0, lastInteractionHint - dt);
-
     const accel = 900;
     const maxSpeed = 190;
     let ax = 0;
@@ -446,9 +428,6 @@
     if(keys.has("ArrowRight") || keys.has("d")) ax += accel;
     if(keys.has("ArrowUp") || keys.has("w")) ay -= accel;
     if(keys.has("ArrowDown") || keys.has("s")) ay += accel;
-
-    ax += touchState.dx * accel;
-    ay += touchState.dy * accel;
 
     player.vx = clamp(player.vx + ax * dt, -maxSpeed, maxSpeed);
     player.vy = clamp(player.vy + ay * dt, -maxSpeed, maxSpeed);
@@ -467,7 +446,6 @@
     }
 
     constrainToWalls(player);
-    maybeShowHints();
 
     for(const npc of npcs){
       npc.panic = Math.max(0, npc.panic - dt);
@@ -557,7 +535,7 @@
     ctx.strokeRect(W/2-70, 118, 140, 28);
 
     drawNeonSign(W/2, 36, 220, 70, "NACHTARENA", "#ff4d6d");
-    drawNeonSign(120, 55, 180, 50, "GAYRUTSCHE", "#fbbf24");
+    drawNeonSign(120, 55, 180, 50, "NEON SLIDE", "#fbbf24");
     drawNeonSign(W-130, 105, 170, 50, "TAILOR", "#36d399");
 
     ctx.fillStyle = "rgba(96,165,250,0.1)";
@@ -658,29 +636,6 @@
     ctx.fillStyle = "#111111";
     ctx.fillRect(x-8, y+16, 6, 3);
     ctx.fillRect(x+2, y+16, 6, 3);
-
-    if(slapTimer > 0){
-      const dirX = player.dir.x || 1;
-      const dirY = player.dir.y || 0;
-      const armLength = 18 + (slapTimer * 40);
-      const handX = x + dirX * armLength;
-      const handY = y + dirY * 6;
-      ctx.strokeStyle = "#f7f7fb";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(x + dirX * 8, y + 2);
-      ctx.lineTo(handX, handY);
-      ctx.stroke();
-      ctx.fillStyle = "#f1c7a3";
-      ctx.beginPath();
-      ctx.arc(handX, handY, 6, 0, Math.PI*2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,77,109,0.6)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(handX, handY, 10, 0, Math.PI*2);
-      ctx.stroke();
-    }
   }
 
   function drawNpc(x, y, color){
@@ -729,7 +684,7 @@
 
   function checkInteraction(){
     if(isInside(zones.slide, player.x, player.y)){
-      addLog("Press E to use the Gayrutsche (cool off fast).");
+      addLog("Press E to use the neon slide (cool off fast).");
       return "slide";
     }
     if(isInside(zones.tailor, player.x, player.y)){
@@ -752,9 +707,6 @@
   }
 
   function doSlap(){
-    if(slapCooldown > 0) return;
-    slapCooldown = 0.35;
-    slapTimer = 0.22;
     const dirX = player.dir.x || 1;
     const dirY = player.dir.y || 0;
     const cx = player.x + dirX * 26;
@@ -796,8 +748,8 @@
       addLog("Paparazzi catches it. Viral goes up.");
     }
 
-    for(let i=0;i<20;i++){
-      particles.push({ x: cx, y: cy, vx: rnd(-140, 140), vy: rnd(-140, 140), life: 0, max: rnd(0.2, 0.6), color: "#ff4d6d" });
+    for(let i=0;i<12;i++){
+      particles.push({ x: cx, y: cy, vx: rnd(-120, 120), vy: rnd(-120, 120), life: 0, max: rnd(0.2, 0.5), color: "#ff4d6d" });
     }
 
     if(hitSomething){
@@ -846,69 +798,6 @@
     keys.delete(e.key.toLowerCase());
   });
 
-  function handleTouchStart(e){
-    e.preventDefault();
-    if(touchState.active) return;
-    const touch = e.changedTouches[0];
-    const pad = document.getElementById("mobilePad").getBoundingClientRect();
-    if(touch.clientX < pad.right && touch.clientY > pad.top){
-      touchState.active = true;
-      touchState.id = touch.identifier;
-      touchState.startX = touch.clientX;
-      touchState.startY = touch.clientY;
-      touchState.dx = 0;
-      touchState.dy = 0;
-      updateStick(0, 0);
-    }
-  }
-
-  function handleTouchMove(e){
-    e.preventDefault();
-    if(!touchState.active) return;
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === touchState.id);
-    if(!touch) return;
-    const dx = touch.clientX - touchState.startX;
-    const dy = touch.clientY - touchState.startY;
-    const max = 40;
-    const dist = Math.hypot(dx, dy);
-    const scale = dist > max ? max / dist : 1;
-    const ndx = (dx * scale) / max;
-    const ndy = (dy * scale) / max;
-    touchState.dx = ndx;
-    touchState.dy = ndy;
-    updateStick(dx * scale, dy * scale);
-  }
-
-  function handleTouchEnd(e){
-    e.preventDefault();
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === touchState.id);
-    if(!touch) return;
-    touchState.active = false;
-    touchState.id = null;
-    touchState.dx = 0;
-    touchState.dy = 0;
-    updateStick(0, 0);
-  }
-
-  function updateStick(dx, dy){
-    const stick = document.getElementById("mobileStick");
-    stick.style.transform = `translate(${dx}px, ${dy}px)`;
-  }
-
-  function maybeShowHints(){
-    if(lastInteractionHint > 0) return;
-    if(isInside(zones.slide, player.x, player.y)){
-      addLog("Tap INTERACT to use the Gayrutsche.");
-      lastInteractionHint = 1.2;
-    } else if(isInside(zones.tailor, player.x, player.y)){
-      addLog("Tap INTERACT to repair the suit.");
-      lastInteractionHint = 1.2;
-    } else if(isInside(zones.door0, player.x, player.y) || isInside(zones.door1, player.x, player.y) || isInside(zones.door2, player.x, player.y)){
-      addLog("Tap INTERACT to talk to the bouncer.");
-      lastInteractionHint = 1.2;
-    }
-  }
-
   document.getElementById("btnReset").addEventListener("click", () => {
     resetAll();
   });
@@ -918,26 +807,6 @@
     document.getElementById("btnMute").textContent = flags.muted ? "Unmute" : "Mute";
     addLog(flags.muted ? "Muted." : "Unmuted.");
   });
-
-  document.getElementById("btnSlap").addEventListener("click", () => {
-    doSlap();
-  });
-
-  document.getElementById("btnInteract").addEventListener("click", () => {
-    const interaction = checkInteraction();
-    if(interaction === "slide") useSlide();
-    if(interaction === "tailor") repairSuit();
-    if(interaction === "door") doorTalk();
-  });
-
-  document.getElementById("btnPause").addEventListener("click", () => {
-    togglePause();
-  });
-
-  canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
-  canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
-  canvas.addEventListener("touchend", handleTouchEnd);
-  canvas.addEventListener("touchcancel", handleTouchEnd);
 
   resizeCanvas();
   pickBouncer();
