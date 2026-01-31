@@ -6,9 +6,9 @@ import random
 
 import streamlit as st
 
-from content import BOUNCERS, ENDINGS, MANUAL_PAGES, QUESTS
-from game_state import default_state, reset_for_new_run
-from systems import (
+from crimson_corridor.content import ENDINGS, MANUAL_PAGES, QUESTS
+from crimson_corridor.game_state import default_state, reset_for_new_run
+from crimson_corridor.systems import (
     add_log,
     apply_delta,
     available_slap_moves,
@@ -26,7 +26,7 @@ from systems import (
     tone_choice,
     trigger_viral_clip,
 )
-from ui import inject_css, render_hud, render_log, render_scene_card
+from crimson_corridor.ui import inject_css, render_hud, render_log, render_scene_card
 
 st.set_page_config(page_title="Crimson Corridor", page_icon="🎧", layout="wide")
 
@@ -135,7 +135,7 @@ with col_main:
         render_scene_card(quest["title"], "Side Quest", quest["setup"])
         for choice in quest["choices"]:
             if st.button(choice["label"], use_container_width=True):
-                from systems import apply_quest_choice
+                from crimson_corridor.systems import apply_quest_choice
 
                 apply_quest_choice(gs, quest, choice)
                 gs["quests"]["active"] = []
@@ -162,7 +162,7 @@ with col_main:
                 tokens[selected] -= 1
                 add_log(gs, f"Used vouch token: {selected}.")
                 apply_delta(gs, {"respect": 6, "heat": -4})
-                from systems import accept_entry
+                from crimson_corridor.systems import accept_entry
 
                 accept_entry(gs)
                 increment_turn(gs)
@@ -180,7 +180,7 @@ with col_main:
                 gs["inv"][item] -= 1
                 add_log(gs, f"Used item: {item}.")
                 apply_delta(gs, {"swagger": 4, "respect": 2})
-                from systems import accept_entry
+                from crimson_corridor.systems import accept_entry
 
                 accept_entry(gs)
                 increment_turn(gs)
@@ -200,7 +200,7 @@ with col_main:
                     increment_turn(gs)
                     success, reasons = evaluate_bouncer(gs)
                     if success:
-                        from systems import accept_entry
+                        from crimson_corridor.systems import accept_entry
 
                         accept_entry(gs)
                         trigger_viral_clip(gs, "Door win")

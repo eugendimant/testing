@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from content import BOUNCERS, EVENTS, MANUAL_PAGES
+from crimson_corridor.content import BOUNCERS, EVENTS, MANUAL_PAGES
 
 RAGE_TIERS = {
     "soft": 25,
