@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crimson Corridor: Bojan's Club Run</title>
+    <title>Crimson Corridor: Outbreak Run</title>
     <style>
         :root {
             color-scheme: dark;
@@ -15,7 +15,6 @@
             --muted: #b2b2c2;
             --good: #4cd964;
             --warning: #f5a623;
-            --vip: #f7c948;
         }
 
         * {
@@ -119,14 +118,6 @@
             background: linear-gradient(90deg, #49f2c0, #3dd5f3);
         }
 
-        .bar.rage span {
-            background: linear-gradient(90deg, #ff8c42, #fcee21);
-        }
-
-        .bar.shield span {
-            background: linear-gradient(90deg, #5aa9ff, #9bd4ff);
-        }
-
         .hint {
             font-size: 13px;
             color: var(--muted);
@@ -164,7 +155,7 @@
             background: rgba(15, 15, 26, 0.95);
             border-radius: 16px;
             padding: 24px;
-            max-width: 560px;
+            max-width: 520px;
             width: 100%;
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
@@ -232,40 +223,6 @@
             line-height: 1.4;
         }
 
-        .story {
-            background: rgba(255, 255, 255, 0.04);
-            border-radius: 12px;
-            padding: 14px;
-            font-size: 13px;
-            line-height: 1.5;
-            color: var(--muted);
-        }
-
-        .story strong {
-            color: var(--text);
-        }
-
-        .toast {
-            position: absolute;
-            top: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(22, 22, 36, 0.9);
-            padding: 10px 18px;
-            border-radius: 999px;
-            font-size: 14px;
-            color: var(--vip);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-
-        .toast.show {
-            opacity: 1;
-        }
-
         footer {
             padding: 16px clamp(20px, 6vw, 60px);
             color: var(--muted);
@@ -282,22 +239,20 @@
 <body>
     <header>
         <div>
-            <h1>Crimson Corridor: Bojan's Club Run</h1>
-            <p>Slap through the crowd, earn your wristbands, and force your way into the midnight club.</p>
+            <h1>Crimson Corridor: Outbreak Run</h1>
+            <p>Survive the containment breach. Slash through infected, harvest upgrades, and keep moving.</p>
         </div>
-        <div class="badge">Episode 1</div>
+        <div class="badge">Prototype v1.0</div>
     </header>
 
     <main class="container">
         <section class="panel" id="game-wrap">
             <canvas id="gameCanvas" width="960" height="540" aria-label="Crimson Corridor game canvas"></canvas>
-            <div class="toast" id="clubToast">Club access granted! Bonus score + heal.</div>
 
             <div class="overlay" id="startOverlay">
                 <div class="overlay-card">
-                    <h2>How Bojan Became the Serbianhero</h2>
-                    <p class="hint">Bojan was once a quiet door runner in Novi Sad. One night the line-cutters stormed the club, bruising his friends and blocking the dance floor. He slapped his way through the chaos, saved the crowd, and earned the name <strong>Serbianhero</strong>. Tonight the same crew is back, and getting into the club means everything.</p>
-                    <p class="hint">WASD / Arrow keys to move. Space to slap. Shift to dash. E to unleash a Super Slap when the rage meter fills. P to pause. Survive the waves and pick upgrades between outbreaks.</p>
+                    <h2>Containment Warning</h2>
+                    <p class="hint">WASD / Arrow keys to move. Space to slash. Shift to dash. P to pause. Survive the waves and pick upgrades between outbreaks.</p>
                     <div class="button-row">
                         <button id="startButton">Start Run</button>
                         <button class="secondary" id="toggleGore">Gore: On</button>
@@ -307,15 +262,15 @@
 
             <div class="overlay hidden" id="upgradeOverlay">
                 <div class="overlay-card">
-                    <h2>Street Upgrade</h2>
-                    <p class="hint">Choose one boost before the next crowd wave hits.</p>
+                    <h2>Field Upgrade</h2>
+                    <p class="hint">Choose one enhancement before the next wave breaches containment.</p>
                     <div class="upgrade-grid" id="upgradeGrid"></div>
                 </div>
             </div>
 
             <div class="overlay hidden" id="gameOverOverlay">
                 <div class="overlay-card">
-                    <h2>Run Over</h2>
+                    <h2>Outbreak Lost</h2>
                     <p class="hint" id="gameOverStats"></p>
                     <div class="button-row">
                         <button id="retryButton">Run it Back</button>
@@ -334,38 +289,26 @@
                 <div class="stat"><span>Stamina</span><span id="staminaLabel">100</span></div>
                 <div class="bar stamina"><span id="staminaBar"></span></div>
             </div>
-            <div>
-                <div class="stat"><span>Rage</span><span id="rageLabel">0%</span></div>
-                <div class="bar rage"><span id="rageBar"></span></div>
-            </div>
-            <div>
-                <div class="stat"><span>Shield</span><span id="shieldLabel">0</span></div>
-                <div class="bar shield"><span id="shieldBar"></span></div>
-            </div>
             <div class="stat"><span>Wave</span><span id="waveLabel">0</span></div>
             <div class="stat"><span>Threats Remaining</span><span id="threatLabel">0</span></div>
-            <div class="stat"><span>VIP Wristbands</span><span id="vipLabel">0/3</span></div>
             <div class="stat"><span>Score</span><span id="scoreLabel">0</span></div>
             <div class="stat"><span>Combo</span><span id="comboLabel">x1</span></div>
             <div class="stat"><span>High Score</span><span id="highScoreLabel">0</span></div>
             <div class="hint">
                 <strong>Improvements active:</strong>
                 <ul>
-                    <li>Directional slap cone with readable arc.</li>
-                    <li>Rage meter + Super Slap shockwave.</li>
-                    <li>VIP wristbands plus club-entry bonuses.</li>
-                    <li>Charger enemies with dash attacks.</li>
-                    <li>Shield pickups and dash invulnerability.</li>
+                    <li>Adaptive wave escalation with elite infected.</li>
+                    <li>Upgrade armory between waves.</li>
+                    <li>Gore &amp; splatter particle system.</li>
+                    <li>Drop-based recovery items.</li>
+                    <li>Persistent high score tracking.</li>
                 </ul>
-            </div>
-            <div class="story">
-                <strong>Story Beat:</strong> The line-cutters want to shut the club. Bojan fights through the Crimson Corridor, slapping sense into anyone who blocks the doors. Earn wristbands to prove you belong and keep the party alive.
             </div>
         </aside>
     </main>
 
     <footer>
-        Built for fast keyboard play. Help Bojan reach the club and hold the line.
+        Built for fast keyboard play. Tune the difficulty by surviving longer waves.
     </footer>
 
     <script>
@@ -378,23 +321,17 @@
         const statusLabel = document.getElementById("statusLabel");
         const healthLabel = document.getElementById("healthLabel");
         const staminaLabel = document.getElementById("staminaLabel");
-        const rageLabel = document.getElementById("rageLabel");
-        const shieldLabel = document.getElementById("shieldLabel");
         const waveLabel = document.getElementById("waveLabel");
         const threatLabel = document.getElementById("threatLabel");
-        const vipLabel = document.getElementById("vipLabel");
         const scoreLabel = document.getElementById("scoreLabel");
         const comboLabel = document.getElementById("comboLabel");
         const highScoreLabel = document.getElementById("highScoreLabel");
         const healthBar = document.getElementById("healthBar");
         const staminaBar = document.getElementById("staminaBar");
-        const rageBar = document.getElementById("rageBar");
-        const shieldBar = document.getElementById("shieldBar");
         const gameOverStats = document.getElementById("gameOverStats");
         const startButton = document.getElementById("startButton");
         const retryButton = document.getElementById("retryButton");
         const toggleGoreButton = document.getElementById("toggleGore");
-        const clubToast = document.getElementById("clubToast");
 
         const keys = new Set();
         let lastTime = 0;
@@ -405,16 +342,6 @@
         let combo = 1;
         let comboTimer = 0;
         let highScore = Number(localStorage.getItem("crimsonHighScore") || 0);
-        let rage = 0;
-        const maxRage = 100;
-        let vipBands = 0;
-        let vipTarget = 3;
-        let clubLevel = 0;
-        let screenShake = 0;
-        let screenShakeIntensity = 0;
-        let toastTimer = 0;
-        let shield = 0;
-        const maxShield = 60;
 
         const player = {
             x: canvas.width / 2,
@@ -432,10 +359,6 @@
             damage: 22,
             swingCooldown: 0,
             swingRange: 64,
-            comboGrace: 1.6,
-            facingX: 1,
-            facingY: 0,
-            invulnerable: 0,
         };
 
         const enemies = [];
@@ -463,8 +386,8 @@
                 },
             },
             {
-                title: "Ripper Palm",
-                description: "+8 slap damage and +15 slap range.",
+                title: "Ripper Edge",
+                description: "+8 damage and +15 slash range.",
                 apply: () => {
                     player.damage += 8;
                     player.swingRange += 15;
@@ -485,8 +408,8 @@
                 },
             },
             {
-                title: "Serbianhero Focus",
-                description: "+0.25 combo decay grace time.",
+                title: "Slayer Instinct",
+                description: "+0.25 combo multiplier decay time.",
                 apply: () => {
                     player.comboGrace = (player.comboGrace || 1.6) + 0.25;
                 },
@@ -508,9 +431,6 @@
             player.damageReduction = 0;
             player.dashCooldownReduction = 0;
             player.comboGrace = 1.6;
-            player.facingX = 1;
-            player.facingY = 0;
-            player.invulnerable = 0;
             enemies.length = 0;
             particles.length = 0;
             splatters.length = 0;
@@ -519,14 +439,6 @@
             score = 0;
             combo = 1;
             comboTimer = 0;
-            rage = 0;
-            vipBands = 0;
-            vipTarget = 3;
-            clubLevel = 0;
-            screenShake = 0;
-            toastTimer = 0;
-            shield = 0;
-            clubToast.classList.remove("show");
         }
 
         function startGame() {
@@ -542,10 +454,8 @@
             wave += 1;
             const baseCount = 4 + wave * 2;
             const eliteCount = Math.floor(wave / 3);
-            const chargerCount = Math.max(0, Math.floor((wave - 1) / 4));
             spawnEnemies(baseCount, "runner");
             spawnEnemies(eliteCount, "brute");
-            spawnEnemies(chargerCount, "charger");
             statusLabel.textContent = `Wave ${wave}`;
         }
 
@@ -569,44 +479,30 @@
                     y = Math.random() * canvas.height;
                 }
                 const isBrute = type === "brute";
-                const isCharger = type === "charger";
                 enemies.push({
                     x,
                     y,
-                    radius: isBrute ? 20 : isCharger ? 16 : 14,
-                    speed: isBrute ? 1.2 + wave * 0.05 : isCharger ? 1.6 + wave * 0.04 : 1.8 + wave * 0.08,
-                    health: isBrute ? 90 + wave * 12 : isCharger ? 55 + wave * 8 : 40 + wave * 6,
-                    maxHealth: isBrute ? 90 + wave * 12 : isCharger ? 55 + wave * 8 : 40 + wave * 6,
+                    radius: isBrute ? 20 : 14,
+                    speed: isBrute ? 1.2 + wave * 0.05 : 1.8 + wave * 0.08,
+                    health: isBrute ? 90 + wave * 12 : 40 + wave * 6,
+                    maxHealth: isBrute ? 90 + wave * 12 : 40 + wave * 6,
                     type,
-                    vx: 0,
-                    vy: 0,
-                    stun: 0,
-                    chargeCooldown: isCharger ? 1.8 : 0,
-                    charging: 0,
                 });
             }
         }
 
-        function spawnPickup(x, y, options = {}) {
-            let type = options.type;
+        function spawnPickup(x, y) {
             const roll = Math.random();
-            if (!type) {
-                if (roll < 0.08) {
-                    type = "vip";
-                } else if (roll < 0.22) {
-                    type = "stamina";
-                } else if (roll < 0.45) {
-                    type = "health";
-                } else {
-                    return;
-                }
+            if (roll > 0.3) {
+                return;
             }
+            const type = roll < 0.1 ? "stamina" : "health";
             pickups.push({
                 x,
                 y,
                 radius: 10,
                 type,
-                ttl: 14,
+                ttl: 12,
             });
         }
 
@@ -622,7 +518,7 @@
             });
         }
 
-        function addBloodBurst(x, y, color = "rgba(198, 25, 48, 0.9)") {
+        function addBloodBurst(x, y) {
             if (!goreEnabled) {
                 return;
             }
@@ -636,35 +532,8 @@
                     vy: Math.sin(angle) * speed,
                     life: 0.7 + Math.random() * 0.6,
                     size: 2 + Math.random() * 3,
-                    color,
                 });
             }
-        }
-
-        function addConfetti(x, y) {
-            for (let i = 0; i < 18; i += 1) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 3;
-                const colors = ["#f7c948", "#ff4d6d", "#3dd5f3", "#49f2c0"];
-                particles.push({
-                    x,
-                    y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    life: 1.0 + Math.random() * 0.6,
-                    size: 3 + Math.random() * 3,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                });
-            }
-        }
-
-        function addRage(amount) {
-            rage = Math.min(maxRage, rage + amount);
-        }
-
-        function triggerScreenShake(intensity) {
-            screenShake = 0.2;
-            screenShakeIntensity = Math.max(screenShakeIntensity, intensity);
         }
 
         function update(delta) {
@@ -690,12 +559,6 @@
                 player.stamina -= player.dashCost;
                 player.dashCooldown = 1.6 * (1 - (player.dashCooldownReduction || 0));
                 speed = player.dashSpeed;
-                player.invulnerable = 0.25;
-            }
-
-            if (magnitude > 0.1) {
-                player.facingX = moveX / magnitude;
-                player.facingY = moveY / magnitude;
             }
 
             player.x += (moveX / magnitude) * speed;
@@ -712,40 +575,17 @@
                 player.dashCooldown -= deltaSeconds;
             }
 
-            if (player.invulnerable > 0) {
-                player.invulnerable -= deltaSeconds;
-            }
-
             player.stamina = Math.min(player.maxStamina, player.stamina + player.staminaRegen * deltaSeconds);
 
             if (keys.has(" ") && player.swingCooldown <= 0 && player.stamina >= 12) {
                 player.swingCooldown = 0.35;
                 player.stamina -= 12;
-                performAttack(false);
-            }
-
-            if ((keys.has("e") || keys.has("E")) && rage >= maxRage && player.swingCooldown <= 0) {
-                player.swingCooldown = 0.6;
-                superSlap();
+                performAttack();
             }
 
             updateEnemies(deltaSeconds);
             updateParticles(deltaSeconds);
             updatePickups(deltaSeconds);
-
-            if (screenShake > 0) {
-                screenShake -= deltaSeconds;
-                if (screenShake <= 0) {
-                    screenShakeIntensity = 0;
-                }
-            }
-
-            if (toastTimer > 0) {
-                toastTimer -= deltaSeconds;
-                if (toastTimer <= 0) {
-                    clubToast.classList.remove("show");
-                }
-            }
 
             if (enemies.length === 0) {
                 gameState = "upgrade";
@@ -753,45 +593,22 @@
             }
         }
 
-        function performAttack(isSuper) {
-            const range = isSuper ? player.swingRange * 1.6 : player.swingRange;
-            const damage = isSuper ? player.damage * 1.8 : player.damage;
-            const coneAngle = isSuper ? Math.PI / 1.9 : Math.PI / 2.6;
-            const facingX = player.facingX;
-            const facingY = player.facingY;
-            let hit = 0;
+        function performAttack() {
+            const range = player.swingRange;
+            let hit = false;
             enemies.forEach((enemy) => {
                 const distance = Math.hypot(enemy.x - player.x, enemy.y - player.y);
-                const dx = enemy.x - player.x;
-                const dy = enemy.y - player.y;
-                const dist = Math.hypot(dx, dy) || 1;
-                const dot = (dx / dist) * facingX + (dy / dist) * facingY;
-                const withinCone = dot >= Math.cos(coneAngle / 2);
-                if (distance < range + enemy.radius && withinCone) {
-                    enemy.health -= damage;
-                    hit += 1;
-                    const knockback = isSuper ? 160 : 90;
-                    enemy.vx += (dx / dist) * knockback;
-                    enemy.vy += (dy / dist) * knockback;
-                    if (isSuper) {
-                        enemy.stun = Math.max(enemy.stun, 0.8);
-                    }
+                if (distance < range + enemy.radius) {
+                    enemy.health -= player.damage;
+                    hit = true;
                     addBloodBurst(enemy.x, enemy.y);
                     addSplatter(enemy.x, enemy.y);
                 }
             });
-            if (hit > 0) {
-                combo = Math.min(6, combo + 0.2 * hit);
+            if (hit) {
+                combo = Math.min(6, combo + 0.2);
                 comboTimer = player.comboGrace || 1.6;
-                addRage(12 * hit);
-                triggerScreenShake(isSuper ? 10 : 5);
             }
-        }
-
-        function superSlap() {
-            rage = 0;
-            addConfetti(player.x, player.y);
-            performAttack(true);
         }
 
         function updateEnemies(deltaSeconds) {
@@ -800,54 +617,19 @@
                 const dx = player.x - enemy.x;
                 const dy = player.y - enemy.y;
                 const dist = Math.hypot(dx, dy) || 1;
-
-                if (enemy.stun > 0) {
-                    enemy.stun -= deltaSeconds;
-                } else if (enemy.type === "charger") {
-                    enemy.chargeCooldown -= deltaSeconds;
-                    if (enemy.charging > 0) {
-                        enemy.charging -= deltaSeconds;
-                    } else if (enemy.chargeCooldown <= 0) {
-                        enemy.chargeCooldown = 2.2;
-                        enemy.charging = 0.4;
-                        enemy.vx = (dx / dist) * 380;
-                        enemy.vy = (dy / dist) * 380;
-                    } else {
-                        enemy.x += (dx / dist) * enemy.speed;
-                        enemy.y += (dy / dist) * enemy.speed;
-                    }
-                } else {
-                    enemy.x += (dx / dist) * enemy.speed;
-                    enemy.y += (dy / dist) * enemy.speed;
-                }
-
-                enemy.x += (enemy.vx || 0) * deltaSeconds;
-                enemy.y += (enemy.vy || 0) * deltaSeconds;
-                enemy.vx *= 0.9;
-                enemy.vy *= 0.9;
+                enemy.x += (dx / dist) * enemy.speed;
+                enemy.y += (dy / dist) * enemy.speed;
 
                 if (dist < enemy.radius + player.radius) {
                     const damage = (enemy.type === "brute" ? 16 : 10) * deltaSeconds;
                     const reduction = player.damageReduction || 0;
-                    if (player.invulnerable <= 0) {
-                        if (shield > 0) {
-                            shield = Math.max(0, shield - damage * 14);
-                        } else {
-                            player.health -= damage * (1 - reduction);
-                        }
-                    }
+                    player.health -= damage * (1 - reduction);
                 }
 
                 if (enemy.health <= 0) {
                     enemies.splice(i, 1);
                     score += Math.floor((enemy.type === "brute" ? 80 : 45) * combo);
-                    if (enemy.type === "brute" && Math.random() < 0.5) {
-                        spawnPickup(enemy.x, enemy.y, { type: "vip" });
-                    } else if (enemy.type === "charger" && Math.random() < 0.4) {
-                        spawnPickup(enemy.x, enemy.y, { type: "shield" });
-                    } else {
-                        spawnPickup(enemy.x, enemy.y);
-                    }
+                    spawnPickup(enemy.x, enemy.y);
                 }
             }
 
@@ -877,21 +659,6 @@
             }
         }
 
-        function clubEntryBonus() {
-            clubLevel += 1;
-            vipBands = 0;
-            vipTarget = Math.min(6, 3 + clubLevel);
-            score += 250 + clubLevel * 120;
-            player.health = Math.min(player.maxHealth, player.health + 35);
-            player.stamina = Math.min(player.maxStamina, player.stamina + 40);
-            enemies.forEach((enemy) => {
-                enemy.stun = Math.max(enemy.stun, 1.2);
-            });
-            addConfetti(canvas.width / 2, 80);
-            clubToast.classList.add("show");
-            toastTimer = 2.4;
-        }
-
         function updatePickups(deltaSeconds) {
             for (let i = pickups.length - 1; i >= 0; i -= 1) {
                 const pickup = pickups[i];
@@ -904,16 +671,8 @@
                 if (distance < pickup.radius + player.radius) {
                     if (pickup.type === "health") {
                         player.health = Math.min(player.maxHealth, player.health + 25);
-                    } else if (pickup.type === "stamina") {
+                    } else {
                         player.stamina = Math.min(player.maxStamina, player.stamina + 30);
-                    } else if (pickup.type === "shield") {
-                        shield = Math.min(maxShield, shield + 30);
-                    } else if (pickup.type === "vip") {
-                        vipBands += 1;
-                        score += 60;
-                        if (vipBands >= vipTarget) {
-                            clubEntryBonus();
-                        }
                     }
                     pickups.splice(i, 1);
                 }
@@ -922,14 +681,6 @@
 
         function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            if (screenShake > 0) {
-                const intensity = screenShakeIntensity;
-                const offsetX = (Math.random() - 0.5) * intensity;
-                const offsetY = (Math.random() - 0.5) * intensity;
-                ctx.translate(offsetX, offsetY);
-            }
 
             ctx.save();
             ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
@@ -941,17 +692,6 @@
             }
             ctx.restore();
 
-            ctx.save();
-            ctx.fillStyle = "rgba(247, 201, 72, 0.18)";
-            ctx.fillRect(canvas.width / 2 - 80, 6, 160, 18);
-            ctx.strokeStyle = "rgba(247, 201, 72, 0.6)";
-            ctx.strokeRect(canvas.width / 2 - 80, 6, 160, 18);
-            ctx.fillStyle = "rgba(247, 201, 72, 0.8)";
-            ctx.font = "12px sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("Club Door", canvas.width / 2, 19);
-            ctx.restore();
-
             splatters.forEach((splatter) => {
                 ctx.beginPath();
                 ctx.fillStyle = `rgba(153, 10, 30, ${splatter.alpha})`;
@@ -961,17 +701,7 @@
 
             pickups.forEach((pickup) => {
                 ctx.beginPath();
-                let color = "rgba(255, 120, 120, 0.9)";
-                if (pickup.type === "stamina") {
-                    color = "rgba(80, 200, 255, 0.9)";
-                }
-                if (pickup.type === "shield") {
-                    color = "rgba(90, 169, 255, 0.95)";
-                }
-                if (pickup.type === "vip") {
-                    color = "rgba(247, 201, 72, 0.95)";
-                }
-                ctx.fillStyle = color;
+                ctx.fillStyle = pickup.type === "health" ? "rgba(255, 120, 120, 0.9)" : "rgba(80, 200, 255, 0.9)";
                 ctx.arc(pickup.x, pickup.y, pickup.radius, 0, Math.PI * 2);
                 ctx.fill();
             });
@@ -996,41 +726,32 @@
                 ctx.beginPath();
                 ctx.strokeStyle = "rgba(255, 77, 109, 0.6)";
                 ctx.lineWidth = 3;
-                const centerAngle = Math.atan2(player.facingY, player.facingX);
-                const arcSize = Math.PI / 2.6;
-                ctx.arc(player.x, player.y, player.swingRange, centerAngle - arcSize / 2, centerAngle + arcSize / 2);
+                ctx.arc(player.x, player.y, player.swingRange, 0, Math.PI * 2);
                 ctx.stroke();
             }
 
             particles.forEach((particle) => {
                 ctx.beginPath();
-                ctx.fillStyle = particle.color || "rgba(198, 25, 48, 0.9)";
+                ctx.fillStyle = "rgba(198, 25, 48, 0.9)";
                 ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
                 ctx.fill();
             });
 
             ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
             ctx.font = "14px sans-serif";
-            ctx.textAlign = "left";
             ctx.fillText(`Wave ${wave}`, 20, 28);
-            ctx.restore();
         }
 
         function updateHud() {
             healthLabel.textContent = Math.ceil(player.health);
             staminaLabel.textContent = Math.ceil(player.stamina);
-            rageLabel.textContent = `${Math.floor((rage / maxRage) * 100)}%`;
-            shieldLabel.textContent = Math.ceil(shield);
             waveLabel.textContent = wave;
             threatLabel.textContent = enemies.length;
-            vipLabel.textContent = `${vipBands}/${vipTarget}`;
             scoreLabel.textContent = score;
             comboLabel.textContent = `x${combo.toFixed(1)}`;
             highScoreLabel.textContent = highScore;
             healthBar.style.width = `${(player.health / player.maxHealth) * 100}%`;
             staminaBar.style.width = `${(player.stamina / player.maxStamina) * 100}%`;
-            rageBar.style.width = `${(rage / maxRage) * 100}%`;
-            shieldBar.style.width = `${(shield / maxShield) * 100}%`;
         }
 
         function showUpgrades() {
@@ -1106,16 +827,6 @@
         toggleGoreButton.addEventListener("click", () => {
             goreEnabled = !goreEnabled;
             toggleGoreButton.textContent = `Gore: ${goreEnabled ? "On" : "Off"}`;
-            if (!goreEnabled) {
-                particles.length = 0;
-                splatters.length = 0;
-            }
-        });
-
-        document.addEventListener("visibilitychange", () => {
-            if (document.hidden && gameState === "playing") {
-                gameState = "paused";
-            }
         });
 
         requestAnimationFrame(loop);
