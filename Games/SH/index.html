@@ -28,11 +28,13 @@
     .grid{ display:grid; grid-template-columns: 2.3fr 1fr; gap: 14px; align-items:start; }
     .card{ background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow:hidden; }
     .card.pad{ padding: 12px 12px; }
-    #game{ width:100%; aspect-ratio: 16/9; background: #000; display:block; }
+    #game{ width:100%; aspect-ratio: 16/9; background: #05050a; display:block; touch-action: none; }
     .hud h2, .log h2{ margin:0 0 8px 0; font-size: 14px; letter-spacing: 0.04em; }
     .pill{ display:flex; align-items:center; justify-content:space-between; gap:10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.07); border-radius: 999px; padding: 7px 10px; font-size: 12px; margin: 7px 0; }
     .pill b{ font-size: 12px; }
     .pill .v{ font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.06); }
+    .pill .bar{ flex:1; height: 6px; margin: 0 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow:hidden; }
+    .pill .bar > span{ display:block; height:100%; border-radius: 999px; background: linear-gradient(90deg, #60a5fa, #a78bfa); }
     .row{ display:flex; gap: 10px; flex-wrap:wrap; margin-top: 10px; }
     .btn{ appearance:none; border:0; cursor:pointer; border-radius: 12px; padding: 10px 12px; font-weight: 800; color: #fff;
       background: linear-gradient(90deg, #e94560, #ff4d6d); box-shadow: 0 10px 26px rgba(233,69,96,0.28);
@@ -45,9 +47,21 @@
     .log .entry{ background: var(--panel2); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 9px 10px; margin-bottom: 8px; font-size: 12px; color: var(--text); line-height: 1.35; }
     .badge{ display:inline-flex; align-items:center; gap:8px; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.10); font-size: 12px; color: var(--muted); }
     .footer{ margin-top: 12px; color: var(--muted); font-size: 12px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .mobile-controls{ position: relative; height: 0; }
+    .mobile-pad{ position: absolute; bottom: 12px; left: 12px; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); box-shadow: var(--shadow); display:none; }
+    .mobile-stick{ position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin-left: -28px; margin-top: -28px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.2); }
+    .mobile-actions{ position: absolute; bottom: 14px; right: 12px; display:flex; gap: 10px; flex-wrap:wrap; justify-content:flex-end; width: 220px; display:none; }
+    .mobile-actions button{ border:0; border-radius: 999px; padding: 12px 16px; font-weight: 800; color:#fff; background: linear-gradient(90deg, #60a5fa, #a78bfa); box-shadow: 0 10px 24px rgba(96,165,250,0.24); }
+    .mobile-actions button.slap{ background: linear-gradient(90deg, #ff4d6d, #e94560); }
+    .mobile-actions button.interact{ background: linear-gradient(90deg, #36d399, #1dd1a1); }
+    .mobile-actions button.pause{ background: linear-gradient(90deg, #fbbf24, #f59e0b); color:#0b0b10; }
     @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
       .btn{ width:100%; }
+    }
+    @media (max-width: 800px){
+      .mobile-pad, .mobile-actions{ display:flex; }
+      .mobile-controls{ height: 170px; }
     }
   </style>
 </head>
@@ -62,8 +76,18 @@
     </div>
 
     <div class="grid">
-      <div class="card">
-        <canvas id="game"></canvas>
+      <div class="card" style="position:relative">
+        <canvas id="game" width="960" height="540"></canvas>
+        <div class="mobile-controls">
+          <div class="mobile-pad" id="mobilePad">
+            <div class="mobile-stick" id="mobileStick"></div>
+          </div>
+          <div class="mobile-actions">
+            <button class="slap" id="btnSlap">SLAP</button>
+            <button class="interact" id="btnInteract">INTERACT</button>
+            <button class="pause" id="btnPause">PAUSE</button>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -83,10 +107,11 @@
           <div id="log"></div>
           <div class="note" style="margin-top:10px">
             <b>Controls</b><br/>
-            Move: WASD / Arrow keys<br/>
+            Move: WASD / Arrow keys / Touch pad<br/>
             Interact: E<br/>
             Slap (cartoon): Space<br/>
             Pause: P<br/><br/>
+            <b>Mobile</b>: use the left pad + action buttons.<br/><br/>
             <b>Do-nots</b>: no gore, no slurs, no personal data, no ads/analytics, no monetization.
           </div>
         </div>
@@ -99,32 +124,12 @@
     </div>
   </div>
 
-  <!-- Phaser 3 (CDN). If you need offline, download phaser.min.js and reference it locally. -->
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-
   <script>
-  // =========================
-  // Guardrails / do-nots
-  // =========================
-  // This game intentionally avoids:
-  // 1) gore, 2) slurs, 3) personal data collection, 4) ads/analytics, 5) monetization.
-
-  // =========================
-  // State
-  // =========================
   const MAX = { swagger:100, respect:100, energy:100, cash:100, heat:100, suit:100, rage:100, viral:100 };
   const stats = { swagger:45, respect:35, energy:55, cash:40, heat:10, suit:80, rage:20, viral:5 };
   const inv = { "VIP Card": 0, "Silver Chain": 0, "Press Pass": 0 };
-  const flags = { stage:0, night:1, denied:0, bouncer:"iron_wall", paused:false, muted:false };
+  const flags = { stage:0, night:1, denied:0, paused:false, muted:false };
   const log = [];
-  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-  function addLog(s){ log.push(s); renderLog(); }
-  function applyDelta(d){
-    for(const [k, ch] of Object.entries(d||{})){
-      if(stats[k] !== undefined) stats[k] = clamp(stats[k] + ch, 0, MAX[k]);
-    }
-    renderHUD();
-  }
 
   const BOUNCERS = {
     iron_wall: {
@@ -154,6 +159,55 @@
     }
   };
 
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const W = 960;
+  const H = 540;
+  const scale = { x: 1, y: 1 };
+
+  const keys = new Set();
+  const effects = [];
+  const particles = [];
+  let slapTimer = 0;
+  let slapCooldown = 0;
+  let lastInteractionHint = 0;
+  const touchState = { active: false, id: null, startX: 0, startY: 0, dx: 0, dy: 0 };
+
+  const player = { x: W/2, y: H-120, vx:0, vy:0, w:26, h:30, dir:{x:1,y:0} };
+  const npcs = [];
+  const bouncers = [];
+  const items = [];
+
+  const zones = {
+    door0: { x: W/2, y: 210, w: 260, h: 70 },
+    door1: { x: W/2, y: 160, w: 200, h: 50 },
+    door2: { x: W/2, y: 135, w: 150, h: 40 },
+    slide: { x: 120, y: 130, w: 190, h: 120 },
+    tailor: { x: W-130, y: 160, w: 210, h: 120 },
+    paparazzi: { x: W-250, y: H-90, w: 220, h: 120 }
+  };
+
+  const walls = [
+    { x: W/2, y: 6, w: W, h: 12 },
+    { x: W/2, y: H-6, w: W, h: 12 },
+    { x: 6, y: H/2, w: 12, h: H },
+    { x: W-6, y: H/2, w: 12, h: H },
+    { x: W/2, y: 82, w: 640, h: 150 }
+  ];
+
+  const stageBarrier = { x: W/2, y: 172, w: 220, h: 12, active: true };
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  function rnd(min, max){ return Math.random() * (max-min) + min; }
+
+  function addLog(s){ log.push(s); renderLog(); }
+  function applyDelta(d){
+    for(const [k, ch] of Object.entries(d||{})){
+      if(stats[k] !== undefined) stats[k] = clamp(stats[k] + ch, 0, MAX[k]);
+    }
+    renderHUD();
+  }
+
   function pickBouncer(){
     const keys = Object.keys(BOUNCERS);
     flags.bouncer = keys[Math.floor(Math.random()*keys.length)];
@@ -179,7 +233,8 @@
   function renderHUD(){
     const hud = document.getElementById("hud");
     function pill(k, v){
-      return `<div class="pill"><b>${k}</b><span class="v">${v}</span></div>`;
+      const pct = clamp(Math.round((v / MAX[k.toLowerCase()]) * 100), 0, 100);
+      return `<div class="pill"><b>${k}</b><div class="bar"><span style="width:${pct}%"></span></div><span class="v">${v}</span></div>`;
     }
     hud.innerHTML = [
       pill("Swagger", stats.swagger),
@@ -214,390 +269,37 @@
     pickBouncer();
     addLog("Night 1: Serbianhero arrives in a white suit outside Nachtarena.");
     renderHUD();
+    resetEntities();
   }
 
-  // =========================
-  // Phaser game
-  // =========================
-  const W = 960, H = 540;
-  const config = {
-    type: Phaser.AUTO,
-    canvas: document.getElementById("game"),
-    width: W,
-    height: H,
-    backgroundColor: "#000000",
-    physics: { default: "arcade", arcade: { gravity: { y: 0 }, debug: false } },
-    pixelArt: false,
-    scene: { preload, create, update }
-  };
+  function resetEntities(){
+    player.x = W/2;
+    player.y = H-120;
+    player.vx = 0;
+    player.vy = 0;
+    npcs.length = 0;
+    bouncers.length = 0;
+    items.length = 0;
+    stageBarrier.active = true;
 
-  let game, scene;
-  let player, cursors, keys, uiText, siren;
-  let npcs = [], bouncers = [], paparazzi = null;
-  let walls, doorZones = {}, slideZone, tailorZone;
-  let slapCooldown = 0, interactCooldown = 0;
-  let stageBarrier = null;
-  let floatingTexts;
-
-  function preload(){
-    // Procedural textures to avoid missing files.
-    const g = this.make.graphics({ x:0, y:0, add:false });
-
-    // Player frames: white suit + accent tie. Two-step walk frames and slap frame.
-    function makePlayerTex(key, armOut){
-      g.clear();
-      // glow shadow
-      g.fillStyle(0x000000, 0.55).fillEllipse(20, 32, 28, 10);
-      // body suit
-      g.fillStyle(0xf7f7fb, 1).fillRoundedRect(8, 10, 24, 24, 6);
-      // lapel
-      g.fillStyle(0xd8d8e6, 1).fillTriangle(8, 10, 20, 22, 32, 10);
-      // tie
-      g.fillStyle(0xff4d6d, 0.55).fillRoundedRect(18, 14, 4, 14, 2);
-      // head
-      g.fillStyle(0xf1c7a3, 1).fillCircle(20, 8, 7);
-      // hair
-      g.fillStyle(0x1b1b1b, 1).fillRoundedRect(13, 1, 14, 6, 3);
-      // arms
-      g.fillStyle(0xf7f7fb, 1);
-      if(armOut){
-        g.fillRoundedRect(30, 16, 10, 5, 2); // slap arm
-        g.fillRoundedRect(0, 16, 10, 5, 2);
-      } else {
-        g.fillRoundedRect(30, 18, 7, 4, 2);
-        g.fillRoundedRect(3, 18, 7, 4, 2);
-      }
-      // feet
-      g.fillStyle(0x111111, 1).fillRoundedRect(10, 34, 8, 4, 2);
-      g.fillRoundedRect(22, 34, 8, 4, 2);
-
-      g.generateTexture(key, 40, 40);
-    }
-
-    makePlayerTex("p_walk1", false);
-    makePlayerTex("p_walk2", false);
-    makePlayerTex("p_slap", true);
-
-    // NPC texture
-    function makeNpcTex(key, color){
-      g.clear();
-      g.fillStyle(0x000000, 0.45).fillEllipse(18, 30, 26, 10);
-      g.fillStyle(color, 1).fillRoundedRect(6, 10, 24, 22, 6);
-      g.fillStyle(0xf1c7a3, 1).fillCircle(18, 8, 7);
-      g.fillStyle(0x111111, 1).fillRoundedRect(8, 32, 8, 4, 2);
-      g.fillRoundedRect(20, 32, 8, 4, 2);
-      g.generateTexture(key, 36, 36);
-    }
-    makeNpcTex("npc_red", 0xe94560);
-    makeNpcTex("npc_blue", 0x60a5fa);
-    makeNpcTex("npc_green", 0x36d399);
-    makeNpcTex("npc_purple", 0xa78bfa);
-
-    // Bouncer texture
-    function makeBouncerTex(key, color){
-      g.clear();
-      g.fillStyle(0x000000, 0.55).fillEllipse(22, 36, 34, 12);
-      g.fillStyle(color, 1).fillRoundedRect(6, 12, 32, 24, 8);
-      g.fillStyle(0xf1c7a3, 1).fillCircle(22, 10, 8);
-      g.fillStyle(0x111111, 1).fillRoundedRect(10, 38, 10, 5, 2);
-      g.fillRoundedRect(24, 38, 10, 5, 2);
-      // armband
-      g.fillStyle(0xffffff, 0.28).fillRoundedRect(6, 20, 6, 10, 3);
-      g.generateTexture(key, 44, 44);
-    }
-    makeBouncerTex("bouncer", 0x222236);
-
-    // Neon props
-    function makeNeonRect(key, w, h, c1, c2){
-      g.clear();
-      g.lineStyle(6, c1, 0.25).strokeRoundedRect(3, 3, w-6, h-6, 14);
-      g.lineStyle(2, c2, 0.95).strokeRoundedRect(5, 5, w-10, h-10, 12);
-      g.generateTexture(key, w, h);
-    }
-    makeNeonRect("doorSign", 220, 70, 0xff4d6d, 0xffffff);
-    makeNeonRect("slideSign", 180, 50, 0xfbbf24, 0xffffff);
-    makeNeonRect("tailorSign", 170, 50, 0x36d399, 0xffffff);
-
-    // Particles
-    g.clear();
-    g.fillStyle(0xffffff, 1).fillCircle(4,4,4);
-    g.generateTexture("spark", 8, 8);
-  }
-
-  function create(){
-    scene = this;
-    floatingTexts = this.add.group();
-
-    // Background street
-    const bg = this.add.graphics();
-    bg.fillStyle(0x070710, 1).fillRect(0,0,W,H);
-    bg.fillStyle(0x0b0b18, 1).fillRect(0, 0, W, 140);
-    bg.fillStyle(0x0a0a12, 1).fillRect(0, 140, W, H-140);
-
-    // Neon puddles
-    for(let i=0;i<26;i++){
-      const x = Phaser.Math.Between(30, W-30);
-      const y = Phaser.Math.Between(160, H-30);
-      const c = Phaser.Utils.Array.GetRandom([0xff4d6d, 0x36d399, 0x60a5fa, 0xa78bfa, 0xfbbf24]);
-      const a = Phaser.Math.FloatBetween(0.05, 0.16);
-      bg.fillStyle(c, a).fillEllipse(x, y, Phaser.Math.Between(40, 110), Phaser.Math.Between(18, 55));
-    }
-
-    // Walls/colliders
-    walls = this.physics.add.staticGroup();
-    // outer border
-    walls.add(this.add.rectangle(W/2, 6, W, 12, 0x000000, 0).setOrigin(0.5)).body.setSize(W,12).setOffset(-W/2,-6);
-    walls.add(this.add.rectangle(W/2, H-6, W, 12, 0x000000, 0).setOrigin(0.5)).body.setSize(W,12).setOffset(-W/2,-6);
-    walls.add(this.add.rectangle(6, H/2, 12, H, 0x000000, 0).setOrigin(0.5)).body.setSize(12,H).setOffset(-6,-H/2);
-    walls.add(this.add.rectangle(W-6, H/2, 12, H, 0x000000, 0).setOrigin(0.5)).body.setSize(12,H).setOffset(-6,-H/2);
-
-    // Club building block
-    const clubBlock = this.add.rectangle(W/2, 82, 640, 150, 0x111125, 1);
-    clubBlock.setStrokeStyle(2, 0xffffff, 0.08);
-    walls.add(clubBlock);
-
-    // Door opening area (a gap in wall collider for clubBlock is not trivial with rectangles),
-    // so we keep the wall and use door zones in front of it.
-    // Visual door
-    const door = this.add.rectangle(W/2, 132, 140, 28, 0x0b0b10, 1);
-    door.setStrokeStyle(2, 0xffffff, 0.12);
-
-    // Neon sign
-    const sign = this.add.image(W/2, 36, "doorSign").setAlpha(0.95);
-    this.add.text(W/2, 38, "NACHTARENA", { fontFamily:"system-ui,Segoe UI,Arial", fontSize:"18px", color:"#ffffff" }).setOrigin(0.5);
-
-    // Stage barrier (rope line)
-    stageBarrier = this.add.rectangle(W/2, 172, 220, 12, 0xffffff, 0.08);
-    stageBarrier.setStrokeStyle(2, 0xff4d6d, 0.35);
-    this.physics.add.existing(stageBarrier, true);
-
-    // Door zones: three checkpoints
-    doorZones.stage0 = this.add.zone(W/2, 210, 260, 70);
-    doorZones.stage1 = this.add.zone(W/2, 160, 200, 50);
-    doorZones.stage2 = this.add.zone(W/2, 135, 150, 40);
-    this.physics.add.existing(doorZones.stage0, true);
-    this.physics.add.existing(doorZones.stage1, true);
-    this.physics.add.existing(doorZones.stage2, true);
-
-    // Slide (so-called "Gayrutsche" in the story, treated as a neon slide prop)
-    const slideBase = this.add.rectangle(120, 120, 170, 120, 0x10101d, 1);
-    slideBase.setStrokeStyle(2, 0xffffff, 0.08);
-    const slideSign = this.add.image(120, 55, "slideSign").setAlpha(0.95);
-    this.add.text(120, 56, "NEON SLIDE", { fontFamily:"system-ui,Segoe UI,Arial", fontSize:"14px", color:"#ffffff" }).setOrigin(0.5);
-
-    slideZone = this.add.zone(120, 130, 190, 120);
-    this.physics.add.existing(slideZone, true);
-
-    // Tailor kiosk (repair suit)
-    const tailorBase = this.add.rectangle(W-130, 160, 200, 110, 0x10101d, 1);
-    tailorBase.setStrokeStyle(2, 0xffffff, 0.08);
-    const tSign = this.add.image(W-130, 105, "tailorSign").setAlpha(0.95);
-    this.add.text(W-130, 106, "TAILOR", { fontFamily:"system-ui,Segoe UI,Arial", fontSize:"14px", color:"#ffffff" }).setOrigin(0.5);
-
-    tailorZone = this.add.zone(W-130, 160, 210, 120);
-    this.physics.add.existing(tailorZone, true);
-
-    // Paparazzi hotspot (viral)
-    paparazzi = this.add.rectangle(W-250, H-90, 220, 120, 0x60a5fa, 0.05);
-    paparazzi.setStrokeStyle(2, 0x60a5fa, 0.20);
-    this.add.text(W-250, H-144, "PAPARAZZI", { fontFamily:"system-ui,Segoe UI,Arial", fontSize:"12px", color:"#b9d7ff" }).setOrigin(0.5);
-    this.physics.add.existing(paparazzi, true);
-
-    // Items on street
-    const chain = this.add.rectangle(70, H-70, 18, 18, 0xfbbf24, 1).setStrokeStyle(1, 0xffffff, 0.18);
-    chain.name = "Silver Chain";
-    this.physics.add.existing(chain);
-    chain.body.setCircle(9);
-
-    const vip = this.add.rectangle(W-60, H-70, 18, 18, 0x36d399, 1).setStrokeStyle(1, 0xffffff, 0.18);
-    vip.name = "VIP Card";
-    this.physics.add.existing(vip);
-    vip.body.setCircle(9);
-
-    const pass = this.add.rectangle(W-70, 260, 18, 18, 0xff4d6d, 1).setStrokeStyle(1, 0xffffff, 0.18);
-    pass.name = "Press Pass";
-    this.physics.add.existing(pass);
-    pass.body.setCircle(9);
-
-    // Player
-    player = this.physics.add.sprite(W/2, H-120, "p_walk1");
-    player.setCollideWorldBounds(true);
-    player.setDrag(500,500);
-    player.setMaxVelocity(210,210);
-    player.setDepth(5);
-
-    this.anims.create({ key:"walk", frames:[{key:"p_walk1"},{key:"p_walk2"}], frameRate:8, repeat:-1 });
-    this.anims.create({ key:"slap", frames:[{key:"p_slap"}], frameRate:14, repeat:0 });
-
-    // NPC crowd
-    const npcKeys = ["npc_red","npc_blue","npc_green","npc_purple"];
     for(let i=0;i<10;i++){
-      const s = this.physics.add.sprite(Phaser.Math.Between(220, W-220), Phaser.Math.Between(210, H-140), Phaser.Utils.Array.GetRandom(npcKeys));
-      s.setDepth(4);
-      s.setCollideWorldBounds(true);
-      s.body.setSize(26,26).setOffset(5,6);
-      s._type = "crowd";
-      s._hp = 1;
-      s._panic = 0;
-      npcs.push(s);
+      npcs.push({
+        x: rnd(220, W-220),
+        y: rnd(210, H-140),
+        vx: rnd(-50, 50),
+        vy: rnd(-50, 50),
+        panic: 0,
+        color: ["#e94560", "#60a5fa", "#36d399", "#a78bfa"][Math.floor(Math.random()*4)]
+      });
     }
 
-    // Security / bouncers near door
     for(let i=0;i<3;i++){
-      const b = this.physics.add.sprite(W/2 + (i-1)*70, 210, "bouncer");
-      b.setDepth(6);
-      b.setImmovable(true);
-      b.body.setSize(34,34).setOffset(5,6);
-      b._type = "security";
-      b._hp = 3;
-      bouncers.push(b);
+      bouncers.push({ x: W/2 + (i-1)*70, y: 210, hp: 3 });
     }
 
-    // Colliders
-    this.physics.add.collider(player, walls);
-    this.physics.add.collider(player, stageBarrier);
-    this.physics.add.collider(player, bouncers);
-    this.physics.add.collider(npcs, walls);
-    this.physics.add.collider(npcs, bouncers);
-
-    // Overlap items
-    this.physics.add.overlap(player, chain, () => pickup(chain), null, this);
-    this.physics.add.overlap(player, vip, () => pickup(vip), null, this);
-    this.physics.add.overlap(player, pass, () => pickup(pass), null, this);
-
-    // Door overlaps
-    this.physics.add.overlap(player, doorZones.stage0, () => doorAttempt(0), null, this);
-    this.physics.add.overlap(player, doorZones.stage1, () => doorAttempt(1), null, this);
-    this.physics.add.overlap(player, doorZones.stage2, () => doorAttempt(2), null, this);
-
-    // Interact zones
-    this.physics.add.overlap(player, slideZone, () => hint("Press E to use the neon slide (cool off fast)."), null, this);
-    this.physics.add.overlap(player, tailorZone, () => hint("Press E to repair the suit (cost: 8 cash)."), null, this);
-
-    // UI overlay (inside canvas)
-    uiText = this.add.text(12, 12, "", { fontFamily:"system-ui,Segoe UI,Arial", fontSize:"14px", color:"#ffffff" }).setDepth(20);
-    uiText.setShadow(0, 2, "#000000", 6, true, true);
-
-    // Particles
-    const particles = this.add.particles(0, 0, "spark", {
-      speed: { min: 40, max: 220 },
-      lifespan: { min: 140, max: 320 },
-      scale: { start: 0.7, end: 0 },
-      quantity: 0,
-      emitting: false,
-      blendMode: "ADD"
-    });
-
-    // Sound (optional, simple synth beep via WebAudio)
-    siren = { playing:false };
-
-    // Input
-    cursors = this.input.keyboard.createCursorKeys();
-    keys = this.input.keyboard.addKeys("W,A,S,D,E,SPACE,P");
-    this.input.keyboard.on("keydown-P", () => togglePause());
-    this.input.keyboard.on("keydown-SPACE", () => doSlap(particles));
-    this.input.keyboard.on("keydown-E", () => doInteract());
-
-    // Start run
-    resetAll();
-    addLog("Tip: build respect by talking calmly at the door, or earn viral at PAPARAZZI.");
-  }
-
-  function update(time, delta){
-    if(flags.paused) { uiText.setText("PAUSED (press P)"); return; }
-
-    // Cooldowns
-    slapCooldown = Math.max(0, slapCooldown - delta);
-    interactCooldown = Math.max(0, interactCooldown - delta);
-
-    // Movement
-    const speed = 190;
-    let vx = 0, vy = 0;
-    if(cursors.left.isDown || keys.A.isDown) vx -= speed;
-    if(cursors.right.isDown || keys.D.isDown) vx += speed;
-    if(cursors.up.isDown || keys.W.isDown) vy -= speed;
-    if(cursors.down.isDown || keys.S.isDown) vy += speed;
-    player.setVelocity(vx, vy);
-
-    if(vx !== 0 || vy !== 0){
-      if(!player.anims.isPlaying || player.anims.currentAnim.key !== "walk") player.play("walk", true);
-      player.flipX = vx < 0;
-      player._dir = { x: Math.sign(vx), y: Math.sign(vy) };
-    } else {
-      player.anims.stop();
-      player.setTexture("p_walk1");
-    }
-
-    // NPC behavior: simple wander + panic
-    for(const n of npcs){
-      n._panic = Math.max(0, n._panic - delta);
-      if(n._panic > 0){
-        // run away from player
-        const dx = n.x - player.x;
-        const dy = n.y - player.y;
-        const m = Math.max(1, Math.hypot(dx, dy));
-        n.setVelocity((dx/m)*140, (dy/m)*140);
-      } else if(Math.random() < 0.012){
-        n.setVelocity(Phaser.Math.Between(-80, 80), Phaser.Math.Between(-80, 80));
-      }
-    }
-
-    // Security behavior: hold line
-    for(const b of bouncers){
-      b.setVelocity(0,0);
-    }
-
-    // Escalation: heat
-    if(stats.heat >= 90){
-      endNight("POLICE LOCKDOWN", "Heat hit 90. Sirens, shutdown.");
-    } else if(stats.energy <= 0){
-      endNight("BURNOUT", "Energy hit 0. Serbianhero collapses on the curb.");
-    }
-
-    // UI text
-    uiText.setText(`Stage ${flags.stage}/3 · Heat ${stats.heat} · Suit ${stats.suit} · Respect ${stats.respect} · Viral ${stats.viral}`);
-  }
-
-  function hint(msg){
-    // Throttle hints so it does not spam.
-    if(interactCooldown > 0) return;
-    interactCooldown = 700;
-    // only show as log sometimes
-    if(Math.random() < 0.35) addLog(msg);
-  }
-
-  function floatText(x, y, text, color="#ffffff"){
-    const t = scene.add.text(x, y, text, { fontFamily:"system-ui,Segoe UI,Arial", fontSize:"12px", color });
-    t.setDepth(30);
-    scene.tweens.add({
-      targets: t,
-      y: y - 24,
-      alpha: 0,
-      duration: 650,
-      ease: "Sine.easeOut",
-      onComplete: () => t.destroy()
-    });
-  }
-
-  function pickup(obj){
-    if(!obj.active) return;
-    obj.active = false;
-    obj.visible = false;
-    inv[obj.name] = (inv[obj.name] || 0) + 1;
-    addLog(`Picked up: ${obj.name}.`);
-    if(obj.name === "Press Pass") applyDelta({ respect: 4, viral: 8 });
-    if(obj.name === "Silver Chain") applyDelta({ swagger: 6 });
-    if(obj.name === "VIP Card") applyDelta({ respect: 8, heat: -2 });
-    floatText(player.x, player.y-18, `+ ${obj.name}`, "#fbbf24");
-  }
-
-  function doorAttempt(stageIdx){
-    // Only handle when player is near the correct stage gate.
-    if(stageIdx !== flags.stage) return;
-
-    // Rope barrier blocks stage 0 until acceptance. Stages 1 and 2 are "virtual" checks.
-    // On touch, do not auto-check every frame; only when pressing E.
-    hint(`Door check at stage ${flags.stage}/3. Press E to talk.`);
+    items.push({ name:"Silver Chain", x:70, y:H-70, color:"#fbbf24", active:true });
+    items.push({ name:"VIP Card", x:W-60, y:H-70, color:"#36d399", active:true });
+    items.push({ name:"Press Pass", x:W-70, y:260, color:"#ff4d6d", active:true });
   }
 
   function doorTalk(){
@@ -608,13 +310,9 @@
       flags.stage += 1;
       addLog(`${b.name} lets you pass stage ${flags.stage}/3.`);
       applyDelta({ respect: 5, swagger: 3, rage: -5 });
-      floatText(player.x, player.y-18, `Stage +1`, "#36d399");
-
-      // Stage barrier logic
+      effects.push({ text: "Stage +1", x: player.x, y: player.y-18, color: "#36d399", t: 0 });
       if(flags.stage >= 1){
-        // disable rope barrier collider to allow approach
-        stageBarrier.body.enable = false;
-        stageBarrier.setAlpha(0.05);
+        stageBarrier.active = false;
       }
       if(flags.stage >= 3){
         enterClub();
@@ -623,36 +321,25 @@
       return;
     }
 
-    // Denied
     flags.denied += 1;
     applyDelta({ rage: 8, heat: 6, energy: -4 });
     addLog(`${b.name} denies entry: ${res.reasons.join(", ")}.`);
     addLog("Security gestures toward the neon slide to cool off.");
-    floatText(player.x, player.y-18, "DENIED", "#ff4d6d");
-
-    // If the player keeps getting denied, the crowd becomes a bit more hostile.
+    effects.push({ text: "DENIED", x: player.x, y: player.y-18, color: "#ff4d6d", t: 0 });
     if(flags.denied >= 2) applyDelta({ heat: 2 });
-
     renderHUD();
   }
 
   function enterClub(){
     addLog("The door opens. Bass hits. Serbianhero is inside Nachtarena.");
     applyDelta({ heat: 5, swagger: 10 });
-    renderHUD();
-    // Simple celebration: fireworks particles and then new night
-    const burst = scene.add.particles(player.x, player.y, "spark", {
-      speed: { min: 80, max: 320 },
-      lifespan: { min: 240, max: 520 },
-      scale: { start: 0.9, end: 0 },
-      quantity: 80,
-      blendMode: "ADD"
-    });
-    scene.time.delayedCall(650, () => burst.destroy());
-    scene.time.delayedCall(1400, () => {
+    for(let i=0;i<80;i++){
+      particles.push({ x: player.x, y: player.y, vx: rnd(-160, 160), vy: rnd(-180, 180), life: 0, max: rnd(0.4, 0.9), color: "#ffffff" });
+    }
+    setTimeout(() => {
       addLog("Afterparty fades. New night begins.");
       nextNight();
-    });
+    }, 1200);
   }
 
   function nextNight(){
@@ -660,147 +347,35 @@
     flags.stage = 0;
     flags.denied = 0;
     pickBouncer();
-    stageBarrier.body.enable = true;
-    stageBarrier.setAlpha(1);
-    player.setPosition(W/2, H-120);
+    stageBarrier.active = true;
+    player.x = W/2;
+    player.y = H-120;
     applyDelta({ heat: -10, rage: -8, energy: 12, suit: 3 });
     addLog(`Night ${flags.night}: Serbianhero returns to the door in the white suit.`);
     renderHUD();
   }
 
-  function doSlap(particles){
-    if(flags.paused) return;
-    if(slapCooldown > 0) return;
-    slapCooldown = 420;
-
-    // Slap animation
-    player.play("slap", true);
-    scene.time.delayedCall(120, () => {
-      if(!player.anims.isPlaying) player.setTexture("p_walk1");
-    });
-
-    // Slap arc in front
-    const dirX = (player._dir && player._dir.x !== 0) ? player._dir.x : (player.flipX ? -1 : 1);
-    const dirY = (player._dir && player._dir.y) ? player._dir.y : 0;
-    const cx = player.x + dirX*26;
-    const cy = player.y + dirY*8;
-
-    particles.setPosition(cx, cy);
-    particles.emitParticle(12);
-
-    let hitSomething = false;
-
-    // Hit crowd
-    for(const n of npcs){
-      const d = Phaser.Math.Distance.Between(cx, cy, n.x, n.y);
-      if(d < 34){
-        hitSomething = true;
-        n._panic = 1300;
-        const dx = n.x - player.x;
-        const dy = n.y - player.y;
-        const m = Math.max(1, Math.hypot(dx, dy));
-        n.setVelocity((dx/m)*220, (dy/m)*220);
-        floatText(n.x, n.y-20, "SLAP!", "#ff4d6d");
-        applyDelta({ respect: 2, heat: 2, rage: 2 });
-      }
-    }
-
-    // Hit security
-    for(const b of bouncers){
-      const d = Phaser.Math.Distance.Between(cx, cy, b.x, b.y);
-      if(d < 40){
-        hitSomething = true;
-        b._hp -= 1;
-        floatText(b.x, b.y-22, "SECURITY HIT", "#fbbf24");
-        applyDelta({ heat: 6, rage: 4, respect: -2, suit: -2 });
-        if(b._hp <= 0){
-          // temporarily back off
-          b.disableBody(true, true);
-          addLog("A security guard backs off. The line shifts.");
-          scene.time.delayedCall(2200, () => {
-            b._hp = 3;
-            b.enableBody(true, b.x, b.y, true, true);
-          });
-        }
-      }
-    }
-
-    // Viral bonus if near paparazzi
-    const nearP = Phaser.Geom.Rectangle.Contains(paparazzi.getBounds(), player.x, player.y);
-    if(nearP && hitSomething){
-      applyDelta({ viral: 6, cash: 3, heat: 2 });
-      floatText(player.x, player.y-30, "+VIRAL", "#60a5fa");
-      addLog("Paparazzi catches it. Viral goes up.");
-    }
-
-    if(hitSomething){
-      stats.energy = clamp(stats.energy - 1, 0, MAX.energy);
-      renderHUD();
-    } else {
-      // Whiff still raises heat a bit
-      applyDelta({ heat: 1 });
-    }
-  }
-
-  function doInteract(){
-    if(flags.paused) return;
-    if(interactCooldown > 0) return;
-    interactCooldown = 250;
-
-    // Door talk if close to door zones
-    const nearDoor = (flags.stage === 0 && Phaser.Math.Distance.Between(player.x, player.y, W/2, 210) < 90) ||
-                     (flags.stage === 1 && Phaser.Math.Distance.Between(player.x, player.y, W/2, 160) < 70) ||
-                     (flags.stage === 2 && Phaser.Math.Distance.Between(player.x, player.y, W/2, 135) < 60);
-    if(nearDoor){
-      doorTalk();
-      return;
-    }
-
-    // Slide use
-    if(Phaser.Geom.Rectangle.Contains(slideZone.getBounds(), player.x, player.y)){
-      useSlide();
-      return;
-    }
-
-    // Tailor
-    if(Phaser.Geom.Rectangle.Contains(tailorZone.getBounds(), player.x, player.y)){
-      repairSuit();
-      return;
-    }
-
-    addLog("Nothing to interact with here.");
-  }
-
   function useSlide(){
-    // "so-called 'Gayrutsche'" is treated as a neon slide prop (no slur usage intended)
-    addLog("Serbianhero uses the neon slide to cool off fast.");
+    addLog("Serbianhero uses the Gayrutsche (neon slide) to cool off fast.");
     applyDelta({ heat: -18, rage: -8, suit: -4, energy: 6 });
-    floatText(player.x, player.y-22, "COOL OFF", "#36d399");
-
-    // Slide motion: quick swoop down
-    const startX = player.x, startY = player.y;
-    const endX = 120, endY = 210;
-    scene.tweens.add({
-      targets: player,
-      x: endX,
-      y: endY,
-      duration: 420,
-      ease: "Sine.easeInOut",
-      onStart: () => player.setTexture("p_walk2"),
-      onComplete: () => player.setTexture("p_walk1")
-    });
+    effects.push({ text: "COOL OFF", x: player.x, y: player.y-22, color: "#36d399", t: 0 });
+    player.x = 120;
+    player.y = 210;
+    for(let i=0;i<18;i++){
+      particles.push({ x: player.x, y: player.y, vx: rnd(-60, 60), vy: rnd(-120, -20), life: 0, max: rnd(0.3, 0.6), color: "#36d399" });
+    }
     renderHUD();
   }
 
   function repairSuit(){
     if(stats.cash < 8){
-      addLog("Tailor: Not enough cash to repair the suit (need 8).");
-      floatText(player.x, player.y-22, "NEED CASH", "#fbbf24");
+      addLog("Tailor: Not enough cash to repair the suit (need 8)." );
+      effects.push({ text: "NEED CASH", x: player.x, y: player.y-22, color: "#fbbf24", t: 0 });
       return;
     }
     addLog("Tailor repairs the white suit. Clean look restored.");
     applyDelta({ cash: -8, suit: 15, heat: -2, swagger: 2 });
-    floatText(player.x, player.y-22, "+SUIT", "#36d399");
+    effects.push({ text: "+SUIT", x: player.x, y: player.y-22, color: "#36d399", t: 0 });
   }
 
   function togglePause(){
@@ -811,27 +386,531 @@
   function endNight(title, reason){
     addLog(`${title}: ${reason}`);
     flags.paused = true;
-    // Hard reset after a moment
-    scene.time.delayedCall(1200, () => {
+    setTimeout(() => {
       flags.paused = false;
       nextNight();
-    });
+    }, 1200);
   }
 
-  // =========================
-  // UI buttons
-  // =========================
+  function isInside(zone, x, y){
+    return Math.abs(x - zone.x) <= zone.w/2 && Math.abs(y - zone.y) <= zone.h/2;
+  }
+
+  function rectsOverlap(a, b){
+    return Math.abs(a.x - b.x) < (a.w + b.w)/2 && Math.abs(a.y - b.y) < (a.h + b.h)/2;
+  }
+
+  function constrainToWalls(entity){
+    for(const wall of walls){
+      const overlap = rectsOverlap({ x: entity.x, y: entity.y, w: entity.w, h: entity.h }, wall);
+      if(overlap){
+        const dx = entity.x - wall.x;
+        const dy = entity.y - wall.y;
+        const px = (wall.w/2 + entity.w/2) - Math.abs(dx);
+        const py = (wall.h/2 + entity.h/2) - Math.abs(dy);
+        if(px < py){
+          entity.x += dx > 0 ? px : -px;
+          entity.vx = 0;
+        } else {
+          entity.y += dy > 0 ? py : -py;
+          entity.vy = 0;
+        }
+      }
+    }
+    if(stageBarrier.active){
+      const barrier = { x: stageBarrier.x, y: stageBarrier.y, w: stageBarrier.w, h: stageBarrier.h };
+      const overlap = rectsOverlap({ x: entity.x, y: entity.y, w: entity.w, h: entity.h }, barrier);
+      if(overlap){
+        const dy = entity.y - barrier.y;
+        const py = (barrier.h/2 + entity.h/2) - Math.abs(dy);
+        entity.y += dy > 0 ? py : -py;
+        entity.vy = 0;
+      }
+    }
+  }
+
+  function update(dt){
+    if(flags.paused){
+      return;
+    }
+
+    slapTimer = Math.max(0, slapTimer - dt);
+    slapCooldown = Math.max(0, slapCooldown - dt);
+    lastInteractionHint = Math.max(0, lastInteractionHint - dt);
+
+    const accel = 900;
+    const maxSpeed = 190;
+    let ax = 0;
+    let ay = 0;
+    if(keys.has("ArrowLeft") || keys.has("a")) ax -= accel;
+    if(keys.has("ArrowRight") || keys.has("d")) ax += accel;
+    if(keys.has("ArrowUp") || keys.has("w")) ay -= accel;
+    if(keys.has("ArrowDown") || keys.has("s")) ay += accel;
+
+    ax += touchState.dx * accel;
+    ay += touchState.dy * accel;
+
+    player.vx = clamp(player.vx + ax * dt, -maxSpeed, maxSpeed);
+    player.vy = clamp(player.vy + ay * dt, -maxSpeed, maxSpeed);
+
+    if(Math.abs(ax) < 10) player.vx *= 0.85;
+    if(Math.abs(ay) < 10) player.vy *= 0.85;
+
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+
+    if(player.vx !== 0 || player.vy !== 0){
+      player.dir = { x: Math.sign(player.vx), y: Math.sign(player.vy) };
+      if(Math.random() < 0.2){
+        particles.push({ x: player.x, y: player.y+10, vx: rnd(-20,20), vy: rnd(10, 40), life: 0, max: rnd(0.2, 0.4), color: "#60a5fa" });
+      }
+    }
+
+    constrainToWalls(player);
+    maybeShowHints();
+
+    for(const npc of npcs){
+      npc.panic = Math.max(0, npc.panic - dt);
+      if(npc.panic > 0){
+        const dx = npc.x - player.x;
+        const dy = npc.y - player.y;
+        const m = Math.max(1, Math.hypot(dx, dy));
+        npc.vx = (dx/m) * 120;
+        npc.vy = (dy/m) * 120;
+      } else if(Math.random() < 0.02){
+        npc.vx = rnd(-60, 60);
+        npc.vy = rnd(-60, 60);
+      }
+
+      npc.x += npc.vx * dt;
+      npc.y += npc.vy * dt;
+      npc.x = clamp(npc.x, 40, W-40);
+      npc.y = clamp(npc.y, 160, H-40);
+    }
+
+    for(const item of items){
+      if(!item.active) continue;
+      const d = Math.hypot(player.x - item.x, player.y - item.y);
+      if(d < 24){
+        item.active = false;
+        inv[item.name] = (inv[item.name] || 0) + 1;
+        addLog(`Picked up: ${item.name}.`);
+        if(item.name === "Press Pass") applyDelta({ respect: 4, viral: 8 });
+        if(item.name === "Silver Chain") applyDelta({ swagger: 6 });
+        if(item.name === "VIP Card") applyDelta({ respect: 8, heat: -2 });
+        effects.push({ text: `+ ${item.name}`, x: player.x, y: player.y-18, color: "#fbbf24", t: 0 });
+      }
+    }
+
+    for(const fx of effects){
+      fx.t += dt;
+    }
+
+    for(const p of particles){
+      p.life += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+    }
+
+    while(effects.length && effects[0].t > 0.9){
+      effects.shift();
+    }
+
+    while(particles.length && particles[0].life > particles[0].max){
+      particles.shift();
+    }
+
+    if(stats.heat >= 90){
+      endNight("POLICE LOCKDOWN", "Heat hit 90. Sirens, shutdown.");
+    } else if(stats.energy <= 0){
+      endNight("BURNOUT", "Energy hit 0. Serbianhero collapses on the curb.");
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, "#0a0a1b");
+    grd.addColorStop(1, "#05050a");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(0, 0, W, 140);
+
+    for(let i=0;i<18;i++){
+      ctx.fillStyle = ["rgba(255,77,109,0.10)", "rgba(54,211,153,0.10)", "rgba(96,165,250,0.10)", "rgba(167,139,250,0.10)", "rgba(251,191,36,0.10)"][i%5];
+      ctx.beginPath();
+      ctx.ellipse((i*50)%W, 200 + (i*23)%260, 60, 24, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "#111125";
+    ctx.fillRect(W/2-320, 7, 640, 150);
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.strokeRect(W/2-320, 7, 640, 150);
+
+    ctx.fillStyle = "#0b0b10";
+    ctx.fillRect(W/2-70, 118, 140, 28);
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.strokeRect(W/2-70, 118, 140, 28);
+
+    drawNeonSign(W/2, 36, 220, 70, "NACHTARENA", "#ff4d6d");
+    drawNeonSign(120, 55, 180, 50, "GAYRUTSCHE", "#fbbf24");
+    drawNeonSign(W-130, 105, 170, 50, "TAILOR", "#36d399");
+
+    ctx.fillStyle = "rgba(96,165,250,0.1)";
+    ctx.fillRect(zones.paparazzi.x - zones.paparazzi.w/2, zones.paparazzi.y - zones.paparazzi.h/2, zones.paparazzi.w, zones.paparazzi.h);
+
+    if(stageBarrier.active){
+      ctx.strokeStyle = "rgba(255,77,109,0.4)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(stageBarrier.x - stageBarrier.w/2, stageBarrier.y);
+      ctx.lineTo(stageBarrier.x + stageBarrier.w/2, stageBarrier.y);
+      ctx.stroke();
+    }
+
+    for(const item of items){
+      if(!item.active) continue;
+      ctx.fillStyle = item.color;
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, 9, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.35)";
+      ctx.stroke();
+    }
+
+    for(const b of bouncers){
+      drawBouncer(b.x, b.y);
+    }
+
+    for(const npc of npcs){
+      drawNpc(npc.x, npc.y, npc.color);
+    }
+
+    drawPlayer(player.x, player.y);
+
+    for(const fx of effects){
+      const alpha = 1 - fx.t;
+      ctx.fillStyle = hexToRgba(fx.color, alpha);
+      ctx.font = "12px system-ui";
+      ctx.fillText(fx.text, fx.x - 10, fx.y - fx.t * 20);
+    }
+
+    for(const p of particles){
+      const alpha = 1 - p.life / p.max;
+      ctx.fillStyle = hexToRgba(p.color, alpha);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    drawLighting();
+
+    if(flags.paused){
+      ctx.fillStyle = "rgba(5,5,10,0.65)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 20px system-ui";
+      ctx.fillText("PAUSED (press P)", W/2 - 90, H/2);
+    }
+  }
+
+  function drawNeonSign(x, y, w, h, text, color){
+    ctx.strokeStyle = hexToRgba(color, 0.3);
+    ctx.lineWidth = 6;
+    ctx.strokeRect(x - w/2, y - h/2, w, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - w/2 + 2, y - h/2 + 2, w - 4, h - 4);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 16px system-ui";
+    ctx.fillText(text, x - ctx.measureText(text).width/2, y + 6);
+  }
+
+  function drawPlayer(x, y){
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y+16, 14, 6, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "#f7f7fb";
+    ctx.fillRect(x-10, y-6, 20, 20);
+    ctx.fillStyle = "#d8d8e6";
+    ctx.beginPath();
+    ctx.moveTo(x-10, y-6);
+    ctx.lineTo(x, y+8);
+    ctx.lineTo(x+10, y-6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,77,109,0.6)";
+    ctx.fillRect(x-1, y-2, 2, 12);
+
+    ctx.fillStyle = "#f1c7a3";
+    ctx.beginPath();
+    ctx.arc(x, y-14, 7, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#1b1b1b";
+    ctx.fillRect(x-7, y-20, 14, 6);
+
+    ctx.fillStyle = "#111111";
+    ctx.fillRect(x-8, y+16, 6, 3);
+    ctx.fillRect(x+2, y+16, 6, 3);
+
+    if(slapTimer > 0){
+      const dirX = player.dir.x || 1;
+      const dirY = player.dir.y || 0;
+      const armLength = 18 + (slapTimer * 40);
+      const handX = x + dirX * armLength;
+      const handY = y + dirY * 6;
+      ctx.strokeStyle = "#f7f7fb";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + dirX * 8, y + 2);
+      ctx.lineTo(handX, handY);
+      ctx.stroke();
+      ctx.fillStyle = "#f1c7a3";
+      ctx.beginPath();
+      ctx.arc(handX, handY, 6, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,77,109,0.6)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(handX, handY, 10, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  function drawNpc(x, y, color){
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(x, y+14, 12, 5, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.fillRect(x-10, y-6, 20, 18);
+    ctx.fillStyle = "#f1c7a3";
+    ctx.beginPath();
+    ctx.arc(x, y-12, 6, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawBouncer(x, y){
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.beginPath();
+    ctx.ellipse(x, y+18, 16, 6, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "#222236";
+    ctx.fillRect(x-14, y-6, 28, 20);
+    ctx.fillStyle = "#f1c7a3";
+    ctx.beginPath();
+    ctx.arc(x, y-12, 7, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.fillRect(x-14, y-2, 6, 10);
+  }
+
+  function drawLighting(){
+    const gradient = ctx.createRadialGradient(player.x, player.y, 20, player.x, player.y, 150);
+    gradient.addColorStop(0, "rgba(255,255,255,0.1)");
+    gradient.addColorStop(1, "rgba(5,5,10,0.7)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function hexToRgba(hex, a){
+    const h = hex.replace("#", "");
+    const r = parseInt(h.substring(0,2), 16);
+    const g = parseInt(h.substring(2,4), 16);
+    const b = parseInt(h.substring(4,6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function checkInteraction(){
+    if(isInside(zones.slide, player.x, player.y)){
+      addLog("Press E to use the Gayrutsche (cool off fast).");
+      return "slide";
+    }
+    if(isInside(zones.tailor, player.x, player.y)){
+      addLog("Press E to repair the suit (cost: 8 cash).");
+      return "tailor";
+    }
+    if(flags.stage === 0 && isInside(zones.door0, player.x, player.y)){
+      addLog("Door check at stage 0/3. Press E to talk.");
+      return "door";
+    }
+    if(flags.stage === 1 && isInside(zones.door1, player.x, player.y)){
+      addLog("Door check at stage 1/3. Press E to talk.");
+      return "door";
+    }
+    if(flags.stage === 2 && isInside(zones.door2, player.x, player.y)){
+      addLog("Door check at stage 2/3. Press E to talk.");
+      return "door";
+    }
+    return null;
+  }
+
+  function doSlap(){
+    if(slapCooldown > 0) return;
+    slapCooldown = 0.35;
+    slapTimer = 0.22;
+    const dirX = player.dir.x || 1;
+    const dirY = player.dir.y || 0;
+    const cx = player.x + dirX * 26;
+    const cy = player.y + dirY * 8;
+    let hitSomething = false;
+
+    for(const npc of npcs){
+      const d = Math.hypot(cx - npc.x, cy - npc.y);
+      if(d < 34){
+        hitSomething = true;
+        npc.panic = 0.9;
+        const dx = npc.x - player.x;
+        const dy = npc.y - player.y;
+        const m = Math.max(1, Math.hypot(dx, dy));
+        npc.vx = (dx/m) * 160;
+        npc.vy = (dy/m) * 160;
+        effects.push({ text: "SLAP!", x: npc.x, y: npc.y-18, color: "#ff4d6d", t: 0 });
+        applyDelta({ respect: 2, heat: 2, rage: 2 });
+      }
+    }
+
+    for(const b of bouncers){
+      const d = Math.hypot(cx - b.x, cy - b.y);
+      if(d < 40){
+        hitSomething = true;
+        b.hp -= 1;
+        effects.push({ text: "SECURITY HIT", x: b.x, y: b.y-22, color: "#fbbf24", t: 0 });
+        applyDelta({ heat: 6, rage: 4, respect: -2, suit: -2 });
+        if(b.hp <= 0){
+          b.x += rnd(-60, 60);
+          b.hp = 3;
+        }
+      }
+    }
+
+    if(isInside(zones.paparazzi, player.x, player.y) && hitSomething){
+      applyDelta({ viral: 6, cash: 3, heat: 2 });
+      effects.push({ text: "+VIRAL", x: player.x, y: player.y-30, color: "#60a5fa", t: 0 });
+      addLog("Paparazzi catches it. Viral goes up.");
+    }
+
+    for(let i=0;i<20;i++){
+      particles.push({ x: cx, y: cy, vx: rnd(-140, 140), vy: rnd(-140, 140), life: 0, max: rnd(0.2, 0.6), color: "#ff4d6d" });
+    }
+
+    if(hitSomething){
+      stats.energy = clamp(stats.energy - 1, 0, MAX.energy);
+      renderHUD();
+    } else {
+      applyDelta({ heat: 1 });
+    }
+  }
+
+  let lastTime = 0;
+  function loop(ts){
+    const dt = Math.min(0.032, (ts - lastTime) / 1000 || 0.016);
+    lastTime = ts;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    const ratio = rect.width / W;
+    scale.x = ratio;
+    scale.y = ratio;
+    canvas.style.height = `${H * ratio}px`;
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+
+  window.addEventListener("keydown", (e) => {
+    if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)){
+      e.preventDefault();
+    }
+    keys.add(e.key.toLowerCase());
+    if(e.key.toLowerCase() === "p") togglePause();
+    if(e.key === " ") doSlap();
+    if(e.key.toLowerCase() === "e"){
+      const interaction = checkInteraction();
+      if(interaction === "slide") useSlide();
+      if(interaction === "tailor") repairSuit();
+      if(interaction === "door") doorTalk();
+    }
+  });
+
+  window.addEventListener("keyup", (e) => {
+    keys.delete(e.key.toLowerCase());
+  });
+
+  function handleTouchStart(e){
+    e.preventDefault();
+    if(touchState.active) return;
+    const touch = e.changedTouches[0];
+    const pad = document.getElementById("mobilePad").getBoundingClientRect();
+    if(touch.clientX < pad.right && touch.clientY > pad.top){
+      touchState.active = true;
+      touchState.id = touch.identifier;
+      touchState.startX = touch.clientX;
+      touchState.startY = touch.clientY;
+      touchState.dx = 0;
+      touchState.dy = 0;
+      updateStick(0, 0);
+    }
+  }
+
+  function handleTouchMove(e){
+    e.preventDefault();
+    if(!touchState.active) return;
+    const touch = Array.from(e.changedTouches).find(t => t.identifier === touchState.id);
+    if(!touch) return;
+    const dx = touch.clientX - touchState.startX;
+    const dy = touch.clientY - touchState.startY;
+    const max = 40;
+    const dist = Math.hypot(dx, dy);
+    const scale = dist > max ? max / dist : 1;
+    const ndx = (dx * scale) / max;
+    const ndy = (dy * scale) / max;
+    touchState.dx = ndx;
+    touchState.dy = ndy;
+    updateStick(dx * scale, dy * scale);
+  }
+
+  function handleTouchEnd(e){
+    e.preventDefault();
+    const touch = Array.from(e.changedTouches).find(t => t.identifier === touchState.id);
+    if(!touch) return;
+    touchState.active = false;
+    touchState.id = null;
+    touchState.dx = 0;
+    touchState.dy = 0;
+    updateStick(0, 0);
+  }
+
+  function updateStick(dx, dy){
+    const stick = document.getElementById("mobileStick");
+    stick.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+
+  function maybeShowHints(){
+    if(lastInteractionHint > 0) return;
+    if(isInside(zones.slide, player.x, player.y)){
+      addLog("Tap INTERACT to use the Gayrutsche.");
+      lastInteractionHint = 1.2;
+    } else if(isInside(zones.tailor, player.x, player.y)){
+      addLog("Tap INTERACT to repair the suit.");
+      lastInteractionHint = 1.2;
+    } else if(isInside(zones.door0, player.x, player.y) || isInside(zones.door1, player.x, player.y) || isInside(zones.door2, player.x, player.y)){
+      addLog("Tap INTERACT to talk to the bouncer.");
+      lastInteractionHint = 1.2;
+    }
+  }
+
   document.getElementById("btnReset").addEventListener("click", () => {
     resetAll();
-    if(scene){
-      // respawn items
-      scene.children.list.forEach(o => {
-        if(o && o.name && (o.name === "Silver Chain" || o.name === "VIP Card" || o.name === "Press Pass")){
-          o.active = true; o.visible = true;
-          if(o.body) o.body.enable = true;
-        }
-      });
-    }
   });
 
   document.getElementById("btnMute").addEventListener("click", () => {
@@ -840,11 +919,31 @@
     addLog(flags.muted ? "Muted." : "Unmuted.");
   });
 
-  // =========================
-  // Start
-  // =========================
-  game = new Phaser.Game(config);
+  document.getElementById("btnSlap").addEventListener("click", () => {
+    doSlap();
+  });
 
+  document.getElementById("btnInteract").addEventListener("click", () => {
+    const interaction = checkInteraction();
+    if(interaction === "slide") useSlide();
+    if(interaction === "tailor") repairSuit();
+    if(interaction === "door") doorTalk();
+  });
+
+  document.getElementById("btnPause").addEventListener("click", () => {
+    togglePause();
+  });
+
+  canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+  canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+  canvas.addEventListener("touchend", handleTouchEnd);
+  canvas.addEventListener("touchcancel", handleTouchEnd);
+
+  resizeCanvas();
+  pickBouncer();
+  renderHUD();
+  addLog("Tip: build respect by talking calmly at the door, or earn viral at PAPARAZZI.");
+  requestAnimationFrame(loop);
   </script>
 </body>
 </html>
